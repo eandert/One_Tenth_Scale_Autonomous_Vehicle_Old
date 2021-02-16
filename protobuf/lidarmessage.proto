@@ -1,0 +1,10 @@
+syntax = "proto2";
+
+package moneomonelidar;
+
+message lidarmessage {
+  required int32 size = 1;
+  repeated bool valid = 2 [packed=true];
+  repeated double range = 3 [packed=true];
+  repeated double distance = 4 [packed=true];
+}
