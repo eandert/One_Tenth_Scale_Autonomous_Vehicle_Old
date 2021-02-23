@@ -3,4 +3,4 @@ This repository contains the control code for controlling a traxxis rc car equip
 
 To install, download the SD card image and upload to 64 GB SD card. This will save days of building the correct libraries, etc. TODO: Place google drive link here. Clone this repo on the Home/Projects/ folder.
 
-To run, simply type `CAV/python vehicle_control.py`
+To run, simply type `python vehicle_control.py`
