@@ -60,8 +60,9 @@ time.sleep(10)
 lidarRecognition = lidar_recognition.LIDAR(time.time())
 
 # Start the connection with the RSU (Road Side Unit) server through sockets
-rsu = connectServer()
-x_offset, y_offset, theta_offset, xCoordinates, yCoordinates, vCoordinates, id_in, simVehicle = rsu.requestRoute()
+rsu = communication.connectServer()
+rsu.register(1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+#x_offset, y_offset, theta_offset, xCoordinates, yCoordinates, vCoordinates, id_in, simVehicle = rsu.requestRoute()
 
 # Now that we have chatted with the RSU server, we should know where we are going
 planner = planning_control.Planner()

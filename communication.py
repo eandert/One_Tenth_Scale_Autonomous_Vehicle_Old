@@ -8,6 +8,8 @@ import os
 import signal
 import subprocess
 import psutil
+import secrets
+import requests
 from io import StringIO
 import csv
 
@@ -27,35 +29,45 @@ def get_ip_address(ifname):
     # RECEIVE: pk_RSU, symk_session
     # SEND: pk_CAV
 class connectServer:
-    def __init___(self):
-        self.connectServer()
+    def __init__(self):
+        self.key = secrets.token_urlsafe(32)
+        self.rsu_ip_address = 'http://192.168.1.162:5000'
 
-    def connectServer():
-
+    def register(self, vehicle_id, x, y, z, roll, pitch, yaw):
         # data to be sent to api 
-        packet = {'key':KEY, 
+        packet = {'key':self.key, 
                 'vehicle_id':vehicle_id,
-                'timestamp':timestamp} 
+                'timestamp':time.time(),
+                'x':x,
+                'y':y,
+                'z':z,
+                'roll':roll,
+                'pitch':pitch,
+                'yaw':yaw} 
+
+        headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
   
+        print("Sending:%s"%packet)
+
         # sending post request
-        r = requests.post(url = rsu_ip_address + "/register ", data = data) 
+        r = requests.post(url = self.rsu_ip_address + "/RSU/register/", data = packet, headers = headers) 
   
         # extracting response text
         response = r.text
 
         print("The response is:%s"%response)
 
-    def messageLocation(self, vehicle_id, timestamp, position, detections):
+    def checkin(self, vehicle_id, timestamp, position, detections):
   
         # data to be sent to api 
-        packet = {'key':KEY, 
+        packet = {'key':self.key, 
                 'vehicle_id':vehicle_id, 
                 'timestamp':timestamp, 
                 'position':position,
                 'detections':detections}
   
         # sending post request
-        r = requests.post(url = rsu_ip_address + "/checkin ", data = data) 
+        r = requests.post(url = self.rsu_ip_address + "/RSU/checkin/", data = data) 
   
         # extracting response text
         response = r.text
