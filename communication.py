@@ -44,35 +44,45 @@ class connectServer:
                 'roll':roll,
                 'pitch':pitch,
                 'yaw':yaw} 
-
-        headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
   
-        print("Sending:%s"%packet)
+        #print("Sending:%s"%packet)
 
         # sending post request
-        r = requests.post(url = self.rsu_ip_address + "/RSU/register/", data = packet, headers = headers) 
+        r = requests.get(url = self.rsu_ip_address + "/RSU/register/", json = packet, timeout=5) 
   
         # extracting response text
-        response = r.text
+        response = r.json()
+        # TODO: Verify this better
 
-        print("The response is:%s"%response)
+        return response
 
-    def checkin(self, vehicle_id, timestamp, position, detections):
+    def checkin(self, vehicle_id, x, y, z, roll, pitch, yaw, detections):
   
         # data to be sent to api 
         packet = {'key':self.key, 
                 'vehicle_id':vehicle_id, 
-                'timestamp':timestamp, 
-                'position':position,
+                'timestamp':time.time(),
+                 'x':x,
+                'y':y,
+                'z':z,
+                'roll':roll,
+                'pitch':pitch,
+                'yaw':yaw,
                 'detections':detections}
   
-        # sending post request
-        r = requests.post(url = self.rsu_ip_address + "/RSU/checkin/", data = data) 
+        try:
+            # sending post request
+            r = requests.get(url = self.rsu_ip_address + "/RSU/checkin/", json = packet, timeout=.1)
+        except Timeout:
+            print ( "Timeout! TODO: add fallback option" )
   
         # extracting response text
-        response = r.text
+        response = r.json()
 
-        print("The response is:%s"%response)
+        # TODO: Verify this better
+        #print("The response is:%s"%response)
+
+        return response
 
 
 class connectLIDAR:
@@ -83,7 +93,9 @@ class connectLIDAR:
         self.time = time.time()
         self.killMapdemo()
         self.debug =  False
-        self.localization = [0.0,0.0,0.0]
+        self.localizationX = 0.0
+        self.localizationY = 0.0
+        self.localizationYaw = 0.0
         time.sleep(1)
         try:
             os.mkfifo(pipeFromC)
@@ -171,9 +183,9 @@ class connectLIDAR:
                         lidarpoints.append(newRow)
                 else:
                     notfirst = True
-                    self.localization[0] = float(row[0])
-                    self.localization[1] = float(row[1])
-                    self.localization[2] = float(row[2]) 
+                    self.localizationX = float(row[0])
+                    self.localizationY = float(row[1])
+                    self.localizationYaw = float(row[2]) 
         except Exception as e:
             if "out of range" not in str(e):
                 print ( " Error: ", str(e) )

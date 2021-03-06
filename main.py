@@ -11,7 +11,7 @@ import motors
 pipeFromC= "/home/jetson/Projects/slamware/fifo_queues/fifopipefromc"
 pipeToC= "/home/jetson/Projects/slamware/fifo_queues/fifopipetoc"
 
-vehicle_id = 0
+vehicle_id = 1
 
 def processImagesThread(q, oq, settings, camSpecs):
     # Init the camera class
@@ -61,12 +61,11 @@ lidarRecognition = lidar_recognition.LIDAR(time.time())
 
 # Start the connection with the RSU (Road Side Unit) server through sockets
 rsu = communication.connectServer()
-rsu.register(1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-#x_offset, y_offset, theta_offset, xCoordinates, yCoordinates, vCoordinates, id_in, simVehicle = rsu.requestRoute()
+response = rsu.register(vehicle_id, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
 # Now that we have chatted with the RSU server, we should know where we are going
 planner = planning_control.Planner()
-#planner.initialVehicleAtPosition(x_offset, y_offset, theta_offset, xCoordinates, yCoordinates, vCoordinates, id_in, simVehicle)
+planner.initialVehicleAtPosition(response["t_x"], response["t_y"], response["t_yaw"], response["route_x"], response["route_y"], response["route_TFL"], vehicle_id, False)
 
 while True:
     # This will block until our LIDAR data is available on the pipes
@@ -89,23 +88,35 @@ while True:
             # Cut the engine to make sure that we don't hit anything since we are blind
             egoVehicle.emergencyStop()
         else:
-            vehicleObservations = fusion.KalmanFilter(lidarcoordinates, lidartimestamp, camcoordinates, camtimestamp)
+            #vehicleObservations = fusion.KalmanFilter(lidarcoordinates, lidartimestamp, camcoordinates, camtimestamp)
 
             # Message the RSU, for now we must do this before our control loop
             # as the RSU has the traffic light state information
-            tflState = rsu.messageLocation(vehicle_id, lidartimestamp, lidarDevice.localization, vehicleObservations)
+            objectPackage = {
+                "lidar_t":lidartimestamp,
+                "lidar_obj":lidarcoordinates,
+                "cam_t":camtimestamp,
+                "cam_obj":camcoordinates,
+                "fused_t":"null",
+                "fused_obj":"null",
+            }
+            response_checkin = rsu.checkin(vehicle_id, lidarDevice.localizationX, lidarDevice.localizationY, 0.0, 0.0, 0.0, lidarDevice.localizationYaw, objectPackage)
+            #tflState = rsu.messageLocation(vehicle_id, lidartimestamp, lidarDevice.localization, vehicleObservations)
 
             # Update our various pieces
-            planner.update_localization(lidarDevice.localization)
-            planner.recieve_coordinate_group_commands(tflState)
+            print ( "v_t ", float(response_checkin["v_t"]) )
+            planner.targetVelocityGeneral = float(response_checkin["v_t"])
+            planner.update_localization([lidarDevice.localizationX, lidarDevice.localizationY, lidarDevice.localizationYaw])
+            planner.recieve_coordinate_group_commands(response_checkin["tfl_state"])
             planner.pure_pursuit_control()
 
             # Now update our current PID with respect to other vehicles
-            planner.check_positions_of_other_vehicles_adjust_velocity(vehicleObservations, vehicle_id)
+            planner.check_positions_of_other_vehicles_adjust_velocity(response_checkin["veh_locations"], vehicle_id)
             # We can't update the PID controls until after all positions are known
             planner.update_pid()
             # Finally, issue the commands to the motors
-            egoVehicle.setControlMotors(planner.return_command_package)
+            steering_ppm, motor_pid = planner.return_command_package()
+            egoVehicle.setControlMotors(steering_ppm, motor_pid)
 
             if debug:
                 plt.cla()

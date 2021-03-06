@@ -1,4 +1,16 @@
 import math
+import numpy as np
+from simple_pid import PID
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
+
+
+def angleDifference( angle1, angle2 ):
+    diff = ( angle2 - angle1 + math.pi ) % (2*math.pi) - math.pi;
+    if diff < -math.pi:
+        return diff + (2*math.pi)
+    else:
+        return diff
 
 class Planner:
     def __init__(self):
@@ -93,7 +105,7 @@ class Planner:
         else:
             # Update the localization from real data
             # Calculate velocity before we update, the localization positions are from last frame
-            self.velocity = self.calc_velocity(localization[0], localization[1], self.localizationPositionX, self.localizationPositionY)
+            self.velocity = self.calc_velocity(localization[0], localization[1], self.localizationPositionX, self.localizationPositionY, localization[2])
             self.localizationPositionX = localization[0] + self.positionX_offset
             self.localizationPositionY = localization[1] + self.positionY_offset
             self.theta = localization[2] + self.theta_offset
@@ -179,6 +191,9 @@ class Planner:
             print("TV", self.targetVelocity)
             self.v_pid.setpoint = self.targetVelocity
             self.motorAcceleration = self.v_pid(self.velocity)
+        # Check for pause and we have no reverse
+        if self.targetVelocityGeneral == 0.0 or self.targetVelocity <= 0.0:
+            self.motorAcceleration = 0.0
         #if self.simVehicle == False:
             #commands[self.id] = [-self.steeringAcceleration, self.motorAcceleration]
 

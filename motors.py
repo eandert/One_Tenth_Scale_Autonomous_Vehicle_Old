@@ -2,6 +2,7 @@ from board import SCL, SDA
 import busio
 from adafruit_motor import servo
 from adafruit_pca9685 import PCA9685
+import math
 
 class Motors:
     def __init__(self):
@@ -30,20 +31,21 @@ class Motors:
         print ( " Motors initialized " )
 
     def setControlMotors(self, steeringAcceleration, motorAcceleration):
-        if seeringAngle == 0.0:
+        if steeringAcceleration == 0.0:
             servo = servo_center
             motor = 0
         else:
-            servo = 1000 + (float(steeringAcceleration) + math.radians(steering_angle_max)) / (2*math.radians(steering_angle_max)/1000) 
+            # Adjust to our 180 degree servo, 90 = 30, -90 = -30
+            servo = self.servo_center + (math.degrees(steeringAcceleration) * 3.0)
         
-        if motorAcceleration != 0.0:
-            motor = .05
+        if motorAcceleration > 0.0:
+            motor = 0.05
         else:
-            motor = 0
+            motor = 0.0
 
-        #self.motor.duty_cycle = 65535*motor
-        self.motor.duty_cycle = 0
-        self.steering.angle = self.servo_center
+        self.motor.duty_cycle = int(65535*motor)
+        #self.motor.duty_cycle = 0
+        self.steering.angle = servo
 
         print ( "Steering PID:" , servo, " Motor PID:", motor )
 
