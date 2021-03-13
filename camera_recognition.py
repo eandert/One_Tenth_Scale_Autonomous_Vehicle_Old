@@ -335,13 +335,17 @@ class YOLO:
 
         # Darknet stuff
         os.chdir(settings.darknetPath)
-        metaPath = './cfg/coco.data'
-        if settings.tinyYolo:
-            configPath = './cfg/yolov4-tiny.cfg'
-            weightPath = './weights/yolov4-tiny.weights'
-        else:
-            configPath = './cfg/yolov4.cfg'
-            weightPath = './weights/yolov4.weights'
+        #metaPath = './cfg/coco.data'
+        #if settings.tinyYolo:
+        #    configPath = './cfg/yolov4-tiny.cfg'
+        #    weightPath = './weights/yolov4-tiny.weights'
+        #else:
+        #    configPath = './cfg/yolov4.cfg'
+        #    weightPath = './weights/yolov4.weights'
+
+        metaPath = './cfg/cav.data'
+        configPath = './cfg/yolov4-tiny-cav.cfg'
+        weightPath = './weights/yolov4-tiny-cav.weights'
 
         # Set up the parameters for darknet
         self.network, self.class_names, self.class_colors = darknet.load_network(

@@ -53,7 +53,7 @@ class Planner:
         self.targetFollowDistance = 1
 
         self.id = None
-        self.simVehicle = True
+        self.simVehicle = False
         
     def initialVehicleAtPosition(self, x_offset, y_offset, theta_offset, xCoordinates, yCoordinates, vCoordinates, id_in, simVehicle):
         self.targetVelocityGeneral = 0
@@ -106,8 +106,8 @@ class Planner:
             # Update the localization from real data
             # Calculate velocity before we update, the localization positions are from last frame
             self.velocity = self.calc_velocity(localization[0], localization[1], self.localizationPositionX, self.localizationPositionY, localization[2])
-            self.localizationPositionX = localization[0] + self.positionX_offset
-            self.localizationPositionY = localization[1] + self.positionY_offset
+            self.localizationPositionX = ((localization[0] * math.cos(self.theta_offset)) - (localization[1] * math.sin(self.theta_offset))) + self.positionX_offset
+            self.localizationPositionY = ((localization[1] * math.cos(self.theta_offset)) + (localization[0] * math.sin(self.theta_offset))) + self.positionY_offset
             self.theta = localization[2] + self.theta_offset
 
     def calc_velocity(self, x1, y1, x2, y2, theta):

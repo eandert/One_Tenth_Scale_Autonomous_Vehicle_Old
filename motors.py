@@ -10,6 +10,7 @@ class Motors:
         self.servo_center = 90.0
         self.servoPIN = 0
         self.motorPIN = 1
+        self.motorMax = 0.075
 
         print ( " Initializing motors " )
 
@@ -33,13 +34,15 @@ class Motors:
     def setControlMotors(self, steeringAcceleration, motorAcceleration):
         if steeringAcceleration == 0.0:
             servo = servo_center
-            motor = 0
+            motor = 0.0
         else:
             # Adjust to our 180 degree servo, 90 = 30, -90 = -30
             servo = self.servo_center + (math.degrees(steeringAcceleration) * 3.0)
         
         if motorAcceleration > 0.0:
-            motor = 0.05
+            motor = self.motorMax * motorAcceleration
+            if motor > self.motorMax:
+                motor = self.motorMax
         else:
             motor = 0.0
 
@@ -47,6 +50,7 @@ class Motors:
         #self.motor.duty_cycle = 0
         self.steering.angle = servo
 
+        print ( "motor target: " , motorAcceleration, " actual " , self.motor.duty_cycle)
         print ( "Steering PID:" , servo, " Motor PID:", motor )
 
     def emergencyStop(self):

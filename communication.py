@@ -36,7 +36,8 @@ class connectServer:
     def register(self, vehicle_id, x, y, z, roll, pitch, yaw):
         # data to be sent to api 
         packet = {'key':self.key, 
-                'vehicle_id':vehicle_id,
+                'id':vehicle_id,
+                'type':0,
                 'timestamp':time.time(),
                 'x':x,
                 'y':y,
@@ -46,23 +47,27 @@ class connectServer:
                 'yaw':yaw} 
   
         #print("Sending:%s"%packet)
-
-        # sending post request
-        r = requests.get(url = self.rsu_ip_address + "/RSU/register/", json = packet, timeout=5) 
+        while True:
+            try:
+                # sending post request
+                r = requests.get(url = self.rsu_ip_address + "/RSU/register/", json = packet, timeout = 5) 
   
-        # extracting response text
-        response = r.json()
-        # TODO: Verify this better
+                # extracting response text
+                response = r.json()
+                # TODO: Verify this better
 
-        return response
+                return response
+            except:
+                print ( "Error: Failed to message RSU, trying again" )
 
     def checkin(self, vehicle_id, x, y, z, roll, pitch, yaw, detections):
   
         # data to be sent to api 
         packet = {'key':self.key, 
-                'vehicle_id':vehicle_id, 
+                'id':vehicle_id, 
+                'type':0,
                 'timestamp':time.time(),
-                 'x':x,
+                'x':x,
                 'y':y,
                 'z':z,
                 'roll':roll,
@@ -72,17 +77,17 @@ class connectServer:
   
         try:
             # sending post request
-            r = requests.get(url = self.rsu_ip_address + "/RSU/checkin/", json = packet, timeout=.1)
-        except Timeout:
-            print ( "Timeout! TODO: add fallback option" )
-  
-        # extracting response text
-        response = r.json()
+            r = requests.get(url = self.rsu_ip_address + "/RSU/checkin/", json = packet, timeout = .1)
+            # extracting response text
+            response = r.json()
 
-        # TODO: Verify this better
-        #print("The response is:%s"%response)
+            # TODO: Verify this better
+            #print("The response is:%s"%response)
 
-        return response
+            return response
+        except requests.exceptions.Timeout as e:
+            print ( "Timeout! TODO: add fallback option" + str(e) )
+            response = None
 
 
 class connectLIDAR:
