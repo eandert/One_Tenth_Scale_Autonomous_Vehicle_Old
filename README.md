@@ -11,4 +11,4 @@ In order to recognise the 1/10th scale vehicles you will need the retrained vers
 
 If you are interested in the data that was used to build this, you can find the 416x416 pictures converted for darknet here: [Training Data](https://drive.google.com/drive/folders/1pw01WHVJSjuO1fQmrj9-hd2wD756w0JB?usp=sharing). Over time this will increase in size as we add more data.
 
-To run, type `python vehicle_control.py`
+To run, type `python main.py`
