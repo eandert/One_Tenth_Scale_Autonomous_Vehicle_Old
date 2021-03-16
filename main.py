@@ -72,7 +72,16 @@ fails = 0
 
 while True:
     # This will block until our LIDAR data is available on the pipes
-    lidarDevice.checkFromC()
+    try:
+         lidarDevice.checkFromC()
+    except Exception as e:
+        print ( " Lidar timed out, ", str(e) )
+        # If we timed out we need to reconect to the LIDAR and try everything again
+        # Make sure we run an emergency stop to make sure we dont keep driving blind
+        egoVehicle.emergencyStop()
+        lidarDevice = communication.connectLIDAR(pipeFromC, pipeToC)
+        continue
+
     # Now that we have LDIAR data, signal the process to start the camera processing
     q.put([frameID])
     

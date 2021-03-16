@@ -12,6 +12,7 @@ import secrets
 import requests
 from io import StringIO
 import csv
+import timeout_decorator
 
 # Start importing cryptographic libraries
 import hashlib
@@ -97,7 +98,7 @@ class connectLIDAR:
         self.lidarTimeout = 1
         self.time = time.time()
         self.killMapdemo()
-        self.debug =  False
+        self.debug =  True
         self.localizationX = 0.0
         self.localizationY = 0.0
         self.localizationYaw = 0.0
@@ -121,33 +122,55 @@ class connectLIDAR:
             try:
                 tries += 1
                 # Now start the opening process
-                toc=open(self.pipeToC,'w')
+                toc = self.tocCheckWrapper()
+                if self.debug:
+                    print ( "Opened toc pipe" )
                 toc.flush()
                 toc.write("S")
                 toc.close()
                 if self.debug:
-                    print ( "Wrote pipe" )
-
-                fromc=open(self.pipeFromC,'r')
-                str=fromc.read()
-                if "A" in str:
+                    print ( "Wrote toc pipe" )
+                fromc = self.fromcCheckWrapper()
+                if self.debug:
+                    print ( "Opened fromc pipe" )
+                testString = self.fromcReadWrapper(fromc)
+                if self.debug:
+                    print ( "Wrote fromc pipe" )
+                if "A" in testString:
                     fromc.close()
                     print ("Sucess, LIDAR started!")
+                    # Sleep long enough for the data to start
+                    time.sleep(1)
                     return
                 else:
                     print (" Error: LIDAR not started.")
-                fromc.close()
+                    fromc.close()
             except Exception as e:
                 print ( " Error: Cannot talk to the LIDAR, retrying..", str(e) )
                 # Set tries to 11 so that it reconnects, probably a seg fault
                 tries = 11
-                time.sleep(1)
+                time.sleep(.1)
             if tries > 10:
                 self.killMapdemo()
                 time.sleep(1)
                 self.lidarProc = self.runLIDARCode()                 
                 time.sleep(1)
                 tries = 0
+
+    # This function exist just so we can wrap it with the timout function
+    @timeout_decorator.timeout(1)
+    def tocCheckWrapper(self):
+        return open(self.pipeToC,'w')
+
+    # This function exist just so we can wrap it with the timout function
+    @timeout_decorator.timeout(1)
+    def fromcCheckWrapper(self):
+        return open(self.pipeFromC,'r')
+
+    # This function exist just so we can wrap it with the timout function
+    @timeout_decorator.timeout(1)
+    def fromcReadWrapper(self, fromc):
+        return fromc.read()
 
     def runLIDARCode(self):
         cmd = "./slamware_sdk_linux-armv7hf-gcc4.8/linux-armv7hf-release/output/mapdemo"
@@ -162,6 +185,7 @@ class connectLIDAR:
             if proc.name() == PROCNAME:
                 proc.kill()
 
+    @timeout_decorator.timeout(1)
     def checkFromC(self):
         if self.debug:
             print("Opening FIFO...")
