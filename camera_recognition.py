@@ -83,7 +83,7 @@ class Tracked:
         self.dX = 0.0
         self.dY = 0.0
         self.timeToIntercept = 0.0
-        self.typeArray = [0, 0, 0, 0]
+        self.typeArray = [0, 0, 0, 0, 0]
         self.typeArray[type] += 1
         self.type = self.typeArray.index(max(self.typeArray))
         self.confidence = confidence
@@ -430,7 +430,7 @@ class YOLO:
           53, 61, 6], 
          'vase':[145, 75, 152],  'scissors':[8, 140, 38],  'teddy bear':[37, 61, 220],  'hair drier':[
           129, 12, 229], 
-         'toothbrush':[11, 126, 158]}
+         'toothbrush':[11, 126, 158], 'cav':[24, 245, 217]}
         cars = 0
         trucks = 0
         buses = 0
@@ -447,7 +447,11 @@ class YOLO:
             name_tag = label
             for name_key, color_val in color_dict.items():
                 if name_key == name_tag:
-                    if name_tag == 'car':
+                    if name_tag == 'cav':
+                        cars += 1
+                        total += 1
+                        ObjectHeight = .25
+                    elif name_tag == 'car':
                         cars += 1
                         total += 1
                         ObjectHeight = 1.5
@@ -478,25 +482,27 @@ class YOLO:
         # Call the matching function to modilfy our detections in trackedList
         self.matchDetections(detections_position_list, detections_list, timestamp)
 
-        for detection in self.trackedList:
-            if detection.lastHistory >= 1:
-                #xmin, ymin, xmax, ymax = convertBack(float(detection.x), float(detection.y), float(detection.width), float(detection.height))
-                pt1 = (detection.xmin, detection.ymin)
-                pt2 = (detection.xmax, detection.ymax)
-                color = color_dict[tracked_items[detection.type]]
-                if self.forwardCollisionWarning and -0.5 <= detection.x <= 0.5 and 0.0 <= detection.timeToIntercept <= 2.5:
-                    cv2.rectangle(img, pt1, pt2, [255, 0, 0], -1)
-                    cv2.putText(img, str(
-                        round(detection.timeToIntercept, 2)), (
-                                    pt1[0], pt1[1] + 25), cv2.FONT_HERSHEY_SIMPLEX, 1.5, [255, 255, 255], 2)
-                else:
-                    cv2.rectangle(img, pt1, pt2, color, 1)
-                    if self.suppressDebug:
-                        cv2.putText(img, str(detection.id), (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        # This is for if we are printing to an image, otherwise no reason to do it
+        if self.showImage:
+            for detection in self.trackedList:
+                if detection.lastHistory >= 1:
+                    #xmin, ymin, xmax, ymax = convertBack(float(detection.x), float(detection.y), float(detection.width), float(detection.height))
+                    pt1 = (detection.xmin, detection.ymin)
+                    pt2 = (detection.xmax, detection.ymax)
+                    color = color_dict[tracked_items[detection.type]]
+                    if self.forwardCollisionWarning and -0.5 <= detection.x <= 0.5 and 0.0 <= detection.timeToIntercept <= 2.5:
+                        cv2.rectangle(img, pt1, pt2, [255, 0, 0], -1)
+                        cv2.putText(img, str(
+                            round(detection.timeToIntercept, 2)), (
+                                        pt1[0], pt1[1] + 25), cv2.FONT_HERSHEY_SIMPLEX, 1.5, [255, 255, 255], 2)
                     else:
-                        cv2.putText(img, str(detection.id) + ' t:' + str(tracked_items[detection.type]) + ' x:' + str(
-                            round(detection.x, 2)) + ' y:' + str(round(detection.y, 2)), (
-                                        pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                        cv2.rectangle(img, pt1, pt2, color, 1)
+                        if self.suppressDebug:
+                            cv2.putText(img, str(detection.id), (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                        else:
+                            cv2.putText(img, str(detection.id) + ' t:' + str(tracked_items[detection.type]) + ' x:' + str(
+                                round(detection.x, 2)) + ' y:' + str(round(detection.y, 2)), (
+                                            pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
         return img
 

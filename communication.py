@@ -98,7 +98,7 @@ class connectLIDAR:
         self.lidarTimeout = 1
         self.time = time.time()
         self.killMapdemo()
-        self.debug =  True
+        self.debug =  False
         self.localizationX = 0.0
         self.localizationY = 0.0
         self.localizationYaw = 0.0
