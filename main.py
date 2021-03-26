@@ -1,6 +1,6 @@
 import time
 import matplotlib.pyplot as plt
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Manager
 
 import camera_recognition
 import lidar_recognition
@@ -28,6 +28,47 @@ def processImagesThread(q, oq, settings, camSpecs):
             camcoordinates, camtimestamp = cameraRecognition.takeCameraFrame(settings,camSpecs)
             # Put the results back in the queue for the main thread
             oq.put([camcoordinates, camtimestamp, goSign])
+
+def processCommunicationsThread(comm_q, v_id, init, response):
+    vehicle_id = v_id
+    # Start the connection with the RSU (Road Side Unit) server through sockets
+    rsu = communication.connectServer()
+    init_returned = rsu.register(vehicle_id, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+    init["t_x"] = init_returned["t_x"]
+    init["t_y"] = init_returned["t_y"]
+    init["t_yaw"] = init_returned["t_yaw"]
+    init["route_x"] = init_returned["route_x"]
+    init["route_y"] = init_returned["route_y"]
+    init["route_TFL"] = init_returned["route_TFL"]
+
+    # Fails keeps track of how many tries to connect with the RSU
+    fails = 0
+
+    # Now wait for input
+    while 1:
+        if not comm_q.empty():
+            got = comm_q.get()
+            x, y, z, roll, pitch, yaw, objectPackage = got
+
+            response_message = rsu.checkin(vehicle_id, x, y, z, roll, pitch, yaw, objectPackage)
+
+            # Check if our result is valid
+            if response_message == None:
+                response["error"] = 1
+                print ( "Error: RSU response not recieved in time, stopping" )
+                if fails < 20:
+                    fails += 1
+                else:
+                    print ( "Attempting to re-register with RSU" )
+                    # We have failed a lot lets try to re-register but use our known location
+                    response_message = rsu.register(vehicle_id, x, y, z, roll, pitch, yaw)
+            else:
+                response["v_t"] = response_message["v_t"]
+                response["tfl_state"] = response_message["tfl_state"]
+                response["veh_locations"] = response_message["veh_locations"]
+                response["error"] = 0
+                fails = 0
 
 debug = False
 
@@ -59,16 +100,22 @@ time.sleep(10)
 # Init the LIDAR processing class
 lidarRecognition = lidar_recognition.LIDAR(time.time())
 
-# Start the connection with the RSU (Road Side Unit) server through sockets
-rsu = communication.connectServer()
-response = rsu.register(vehicle_id, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+# Spawn the communication thread
+manager = Manager()
+init = manager.dict()
+response = manager.dict()
+response["error"] = 1
+comm_q = Queue()
+commThread = Process(target=processCommunicationsThread, args=(comm_q, vehicle_id, init, response))
+commThread.start()
+
+# Now wait for the response
+while 'route_x' not in init:
+    time.sleep(.01)
 
 # Now that we have chatted with the RSU server, we should know where we are going
 planner = planning_control.Planner()
-planner.initialVehicleAtPosition(response["t_x"], response["t_y"], response["t_yaw"], response["route_x"], response["route_y"], response["route_TFL"], vehicle_id, False)
-
-# Fails keeps track of how many tries to connect with 
-fails = 0
+planner.initialVehicleAtPosition(init["t_x"], init["t_y"], init["t_yaw"], init["route_x"], init["route_y"], init["route_TFL"], vehicle_id, False)
 
 while True:
     # This will block until our LIDAR data is available on the pipes
@@ -110,40 +157,29 @@ while True:
                 "cam_t":camtimestamp,
                 "cam_obj":camcoordinates,
                 "fused_t":"null",
-                "fused_obj":"null",
+                "fused_obj":"null"
             }
-            response_checkin = rsu.checkin(vehicle_id, lidarDevice.localizationX, lidarDevice.localizationY, 0.0, 0.0, 0.0, lidarDevice.localizationYaw, objectPackage)
-            #tflState = rsu.messageLocation(vehicle_id, lidartimestamp, lidarDevice.localization, vehicleObservations)
+            
+            comm_q.put([lidarDevice.localizationX, lidarDevice.localizationY, 0.0, 0.0, 0.0, lidarDevice.localizationYaw, objectPackage])
 
-            # Check if our result is valid
-            if response_checkin == None:
-                # Cut the engine to make sure that we don't hit anything since the central controller is down
-                print ( "Error: RSU response not recieved in time, stopping" )
+            if response["error"] != 0:
+            # Cut the engine to make sure that we don't hit anything since the central controller is down
                 egoVehicle.emergencyStop()
-                if fails < 20:
-                    fails += 1
-                else:
-                    print ( "Attempting to re-register with RSU" )
-                    # We have failed a lot lets try to re-register but use our known location
-                    response = rsu.register(vehicle_id, lidarDevice.localizationX, lidarDevice.localizationY, 0.0, 0.0, 0.0, lidarDevice.localizationYaw)
             else:
                 # Update our various pieces
-                print ( "v_t ", float(response_checkin["v_t"]) )
-                planner.targetVelocityGeneral = float(response_checkin["v_t"])
+                planner.targetVelocityGeneral = float(response["v_t"])
                 planner.update_localization([lidarDevice.localizationX, lidarDevice.localizationY, lidarDevice.localizationYaw])
-                print ( lidarDevice.localizationX, lidarDevice.localizationY, lidarDevice.localizationYaw )
-                planner.recieve_coordinate_group_commands(response_checkin["tfl_state"])
+                planner.recieve_coordinate_group_commands(response["tfl_state"])
                 planner.pure_pursuit_control()
 
                 # Now update our current PID with respect to other vehicles
-                planner.check_positions_of_other_vehicles_adjust_velocity(response_checkin["veh_locations"], vehicle_id)
+                planner.check_positions_of_other_vehicles_adjust_velocity(response["veh_locations"], vehicle_id)
                 # We can't update the PID controls until after all positions are known
                 planner.update_pid()
+
                 # Finally, issue the commands to the motors
                 steering_ppm, motor_pid = planner.return_command_package()
                 egoVehicle.setControlMotors(steering_ppm, motor_pid)
-
-                fails = 0
 
                 if debug:
                     plt.cla()

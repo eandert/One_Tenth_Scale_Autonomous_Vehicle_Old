@@ -32,6 +32,7 @@ def get_ip_address(ifname):
 class connectServer:
     def __init__(self):
         self.key = secrets.token_urlsafe(32)
+        #self.rsu_ip_address = 'http://192.168.100.198:5000'
         self.rsu_ip_address = 'http://192.168.1.162:5000'
 
     def register(self, vehicle_id, x, y, z, roll, pitch, yaw):
@@ -78,7 +79,7 @@ class connectServer:
   
         try:
             # sending post request
-            r = requests.get(url = self.rsu_ip_address + "/RSU/checkin/", json = packet, timeout = .1)
+            r = requests.get(url = self.rsu_ip_address + "/RSU/checkin/", json = packet, timeout = .125)
             # extracting response text
             response = r.json()
 
