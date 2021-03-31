@@ -1,38 +1,17 @@
-import sys, math, random, os, cv2, numpy as np, time, csv, socket
-from flask import Response
-from flask import Flask
-from flask import render_template
-import threading
+import sys, math, os, cv2, numpy as np, time
 from sklearn.neighbors import BallTree
-import matplotlib.pyplot as plt
-import io
 import nanocamera as nano
 # Change folder so we can find where darknet is stored
 # Uncomment only if darknet is not in the same folder as this python file
 sys.path.insert(0, '../darknet')
 import darknet
 
-app = Flask(__name__)
 
-outputFrame = None
-outputCoordinates = None
-lock = threading.Lock()
-
-KDTREESEARCH_LIMIT = 10000
-
-# This class holds the default camera configurations for the 2 recorded videos as well as the default guess for the
-# configuation outlined in the readme
+''' This class holds the default camera configurations for the 2 recorded videos as well as the default guess for the
+configuation outlined in the readme '''
 class CameraSpecifications:
-    def __init__(self, defaultVehicle = False, defaultTrafficCam = True):
-        if defaultVehicle:
-            self.cameraAdjustmentAngle = -10.0
-            self.cameraHeight = 1.0
-            self.hFOV = 157.0  # 2 * math.atan( / focalLength)
-            self.vFOV = 155.0
-            self.imageWidth = 1280
-            self.imageHeight = 720
-            self.focalLength = self.imageHeight / 2 / math.tan(self.vFOV / 2.0)
-        elif defaultTrafficCam:
+    def __init__(self, default = True):
+        if default:
             # Use default settign for pre-recorded traffic cam setup
             self.cameraAdjustmentAngle = 0.0
             self.cameraHeight = 2.0
@@ -66,11 +45,11 @@ class Settings:
         self.outputFilename = ""
 
 
+''' This object tracks a single object that has been detected in a video frame.
+We use this primarily to match objects seen between frames and included in here
+is a function for kalman filter to smooth the x and y values as well as a
+function for prediction where the next bounding box will be based on prior movement. '''
 class Tracked:
-    # This object tracks a single object that has been detected in a video frame.
-    # We use this primarily to match objects seen between frames and included in here
-    # is a function for kalman filter to smooth the x and y values as well as a
-    # function for prediction where the next bounding box will be based on prior movement.
     def __init__(self, xmin, ymin, xmax, ymax, type, confidence, x, y, crossSection, time, id):
         self.xmin = xmin
         self.ymin = ymin
@@ -647,6 +626,10 @@ class YOLO:
     def endVideo(self):
         self.out.release()
 
+
+''' This class starts the jetson nano camera using the nano camera library
+(which is built on CV2). Takes pictures on demand. Set to 720P to reduce
+overhead since YOLO only uses 416x416 anyways.'''
 class Camera:
     def __init__(self, settings, camSpecs):
         # Create the Camera instance
