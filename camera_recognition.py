@@ -642,7 +642,7 @@ class Camera:
         height, width = frame_read.shape[:2]
         self.yolo.init(width, height, time.time(), settings, camSpecs)
 
-    def takeCameraFrame(self, settings, camSpecs):
+    def takeCameraFrame(self):
         frame_read = self.camera.read()
         coordinates, timestamp = self.yolo.readFrame(frame_read, time.time())
         return coordinates, timestamp
