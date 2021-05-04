@@ -18,8 +18,8 @@ class Planner:
         self.width = .3
         self.length = .57
         self.wheelbaseLengthFromRear = .1
-        self.wheelbaseLength = .4
-        self.wheelbaseWidth = .1
+        self.wheelbaseLength = .35
+        self.wheelbaseWidth = .245
         self.steeringAngleMax = 30.0
         self.velocityMax = 1.0
         
@@ -105,8 +105,9 @@ class Planner:
         else:
             # Update the localization from real data
             # Calculate velocity before we update, the localization positions are from last frame
+            #  - .175 is to adjust for lidar position vs rear axle
             self.velocity = self.calc_velocity(localization[0], localization[1], self.localizationPositionX, self.localizationPositionY, localization[2])
-            self.localizationPositionX = ((localization[0] * math.cos(self.theta_offset)) - (localization[1] * math.sin(self.theta_offset))) + self.positionX_offset
+            self.localizationPositionX = (((localization[0] - .175) * math.cos(self.theta_offset)) - (localization[1] * math.sin(self.theta_offset))) + self.positionX_offset
             self.localizationPositionY = ((localization[1] * math.cos(self.theta_offset)) + (localization[0] * math.sin(self.theta_offset))) + self.positionY_offset
             self.theta = localization[2] + self.theta_offset
 

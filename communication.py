@@ -32,8 +32,8 @@ def get_ip_address(ifname):
 class connectServer:
     def __init__(self):
         self.key = secrets.token_urlsafe(32)
-        #self.rsu_ip_address = 'http://192.168.100.198:5000'
-        self.rsu_ip_address = 'http://192.168.1.162:5000'
+        self.rsu_ip_address = 'http://192.168.100.198:5000'
+        #self.rsu_ip_address = 'http://192.168.1.162:5000'
 
     def register(self, vehicle_id, x, y, z, roll, pitch, yaw):
         # data to be sent to api 
@@ -79,7 +79,7 @@ class connectServer:
   
         try:
             # sending post request
-            r = requests.get(url = self.rsu_ip_address + "/RSU/checkin/", json = packet, timeout = .125)
+            r = requests.get(url = self.rsu_ip_address + "/RSU/checkin/", json = packet, timeout = .25)
             # extracting response text
             response = r.json()
 
@@ -174,7 +174,7 @@ class connectLIDAR:
         return fromc.read()
 
     def runLIDARCode(self):
-        cmd = "./slamware_sdk_linux-armv7hf-gcc4.8/linux-armv7hf-release/output/mapdemo"
+        cmd = "./slamware_sdk_linux-armv7hf-gcc4.8/linux-armv7hf-release/output/ttcomp"
         pro = subprocess.Popen(cmd, stdout=subprocess.PIPE, 
                            shell=True, preexec_fn=os.setsid) 
         return pro
@@ -196,6 +196,26 @@ class connectLIDAR:
         if self.debug:
             print('Read: "{0}"'.format(self.datastore))
         fromc.close()
+
+    @timeout_decorator.timeout(1)
+    def getFromC(self):
+        start = time.time()
+        toc = self.tocCheckWrapper()
+        if self.debug:
+            print ( "Opened toc pipe" )
+        toc.flush()
+        toc.write("S")
+        toc.close()
+        if self.debug:
+            print("Opening FIFO...")
+        fromc=open(self.pipeFromC,'r')
+        self.time = time.time()
+        self.datastore = fromc.read()
+        if self.debug:
+            print('Read: "{0}"'.format(self.datastore))
+        fromc.close()
+        end = time.time()
+        return start, end
 
     def parseFromC(self):
         reader = csv.reader(self.datastore.split('\n'), delimiter=',')
@@ -220,3 +240,7 @@ class connectLIDAR:
             if "out of range" not in str(e):
                 print ( " Error: ", str(e) )
         return lidarpoints
+
+    def parseFromCIdx(self, index):
+        self.localizationIdx = index
+        return self.parseFromC()

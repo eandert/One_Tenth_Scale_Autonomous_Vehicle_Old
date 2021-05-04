@@ -525,7 +525,7 @@ class YOLO:
         result = []
         for track in self.trackedList:
             if track.lastHistory >= 5:
-                result.append([track.id, track.x, track.y, track.crossSection, track.velocity])
+                result.append([track.id, track.x, track.y, track.crossSection, track.velocity, "C"])
         return result, timestamp
 
 
@@ -659,10 +659,12 @@ class Camera:
         height, width = frame_read.shape[:2]
         self.yolo.init(width, height, time.time(), settings, camSpecs)
 
-    def takeCameraFrame(self, settings, camSpecs):
+    def takeCameraFrame(self):
+        start_time = time.time()
         frame_read = self.camera.read()
-        coordinates, timestamp = self.yolo.readFrame(frame_read, time.time())
-        return coordinates, timestamp
+        end_time = time.time()
+        coordinates, timestamp = self.yolo.readFrame(frame_read, start_time)
+        return coordinates, start_time, end_time
 
     def closeCamera(self):
         # close the camera instance

@@ -284,6 +284,9 @@ class LIDAR:
     def processLidarFrame(self, output, timestamp):
         debug = False
 
+        if len(output) < 1:
+            return [[],timestamp]
+
         array = np.array(output)
         db = DBSCAN(eps=0.1, min_samples=3).fit(array)
         y_pred = db.fit_predict(array)
@@ -367,7 +370,7 @@ class LIDAR:
         result = []
         for track in self.trackedList:
             if track.lastHistory >= 5:
-                result.append([track.id, track.x, track.y, track.crossSection, track.velocity])
+                result.append([track.id, track.x, track.y, track.crossSection, track.velocity, "L"])
 
         return result, timestamp
 

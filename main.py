@@ -11,7 +11,7 @@ import motors
 pipeFromC= "/home/jetson/Projects/slamware/fifo_queues/fifopipefromc"
 pipeToC= "/home/jetson/Projects/slamware/fifo_queues/fifopipetoc"
 
-vehicle_id = 0
+vehicle_id = 1
 
 def processImagesThread(q, oq, settings, camSpecs):
     # Init the camera class
@@ -72,6 +72,8 @@ def processCommunicationsThread(comm_q, v_id, init, response):
 
 debug = False
 
+index = 0
+
 # The first thing we should always do is initialize the control module
 # This is important to make sure a rogue signal doesn't drive us away
 egoVehicle = motors.Motors()
@@ -121,6 +123,9 @@ while True:
     # This will block until our LIDAR data is available on the pipes
     try:
          lidarDevice.checkFromC()
+         # Log this to a file
+         with open("timing.txt", 'a') as file1:
+             file1.write(index, time.time())
     except Exception as e:
         print ( " Lidar timed out, ", str(e) )
         # If we timed out we need to reconect to the LIDAR and try everything again
@@ -133,7 +138,7 @@ while True:
     q.put([frameID])
     
     # Process the LIDAR while we are processign the camera in the background
-    lidarcoordinates, lidartimestamp = lidarRecognition.processLidarFrame(lidarDevice.parseFromC(), lidarDevice.time)
+    lidarcoordinates, lidartimestamp = lidarRecognition.processLidarFrame(lidarDevice.parseFromC(index), lidarDevice.time)
     
     # Now get the result from the other thread and check it is valid
     returned = oq.get()
@@ -165,6 +170,10 @@ while True:
             if response["error"] != 0:
             # Cut the engine to make sure that we don't hit anything since the central controller is down
                 egoVehicle.emergencyStop()
+                # Log this to a file
+                with open("timing.txt", 'a') as file1:
+                    file1.write(None, start)
+                    index += 1
             else:
                 # Update our various pieces
                 planner.targetVelocityGeneral = float(response["v_t"])
@@ -181,6 +190,9 @@ while True:
                 steering_ppm, motor_pid = planner.return_command_package()
                 egoVehicle.setControlMotors(steering_ppm, motor_pid)
 
+                with open("timing.txt", 'a') as file1:
+                    file1.write(lidarDevice.localizationIdx, time.time())
+                    index += 1
                 if debug:
                     plt.cla()
                     # Create plot for lidar and camera points

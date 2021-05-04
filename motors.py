@@ -10,7 +10,7 @@ class Motors:
         self.servo_center = 90.0
         self.servoPIN = 0
         self.motorPIN = 1
-        self.motorMax = 0.075
+        self.motorMax = 0.1
 
         print ( " Initializing motors " )
 
