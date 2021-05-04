@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 from sklearn.neighbors import BallTree
 
 
+'''This object tracks a single object that has been detected in a LIDAR frame.
+We use this primarily to match objects seen between frames and included in here
+is a function for kalman filter to smooth the x and y values as well as a
+function for prediction where the next bounding box will be based on prior movement.'''
 class Tracked:
-    # This object tracks a single object that has been detected in a video frame.
-    # We use this primarily to match objects seen between frames and included in here
-    # is a function for kalman filter to smooth the x and y values as well as a
-    # function for prediction where the next bounding box will be based on prior movement.
     def __init__(self, xmin, ymin, xmax, ymax, type, confidence, x, y, crossSection, time, id):
         self.xmin = xmin
         self.ymin = ymin
@@ -268,6 +268,11 @@ def computeDistance(a, b, epsilon=1e-5):
         distance = 1 - iou
     return distance
 
+
+'''This class contains the code for parsing the data from the LIDAR process.
+Uses DBscan to cluster points and then matches them to either potential CAVs or
+other large obstacles (read carboard boxes used for localization, walls, etc.)
+so that we do not match large objects to moving CAVs during fusion.'''
 class LIDAR:
     def __init__(self, timestamp):
         # Set other parameters for the class
@@ -374,6 +379,10 @@ class LIDAR:
 
         return result, timestamp
 
+
+    '''Similar to the frame by frame matchign done for image recognition to keeps IDs contant, this fuction
+    does the same but for LIDAR point boundin boxes instead of image bounding boxes. It operates from an 
+    overhead perpective rather than a horizonatal one like a a camera'''
     def matchDetections(self, detections_list_positions, detection_list, timestamp):
         self.time += 1
         matches = []

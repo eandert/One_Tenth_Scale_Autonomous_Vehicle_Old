@@ -14,10 +14,8 @@ from io import StringIO
 import csv
 import timeout_decorator
 
-# Start importing cryptographic libraries
-import hashlib
 
-
+''' A utility function for determining our IP address for printing or watnot via python.'''
 def get_ip_address(ifname):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     return socket.inet_ntoa(fcntl.ioctl(
@@ -26,10 +24,15 @@ def get_ip_address(ifname):
         struct.pack('256s', ifname[:15])
     )[20:24])
 
-#TODO: Protect everything within TLS
+
+''' This class creates a connection with the RSU server which is set using an IP address.
+The hopse is that one day this will be more automated but for now the IP must be set manually.
+The communication backend is Flask and timouts are set here so that we do not drive
+infinitely into a wall if a connection times out or a response is not received.'''
+class connectServer:
+    # TODO: Protect everything within TLS
     # RECEIVE: pk_RSU, symk_session
     # SEND: pk_CAV
-class connectServer:
     def __init__(self):
         self.key = secrets.token_urlsafe(32)
         self.rsu_ip_address = 'http://192.168.100.198:5000'
@@ -92,6 +95,12 @@ class connectServer:
             response = None
 
 
+''' This class starts up the process that will read the LIDAR using C++.
+Eddie note: The reason this is not done using Python C/C++ binding is that the
+proprietary driver for the LIDAR is only compiled for 32 bit ARM and 
+short of a miracle I have not been able to figure out how to get Python to
+bind with a 32 bit .so file. So for now we are running a process and killing
+and restarting it if there are any issues, which has been very rare luckily.'''
 class connectLIDAR:
     def __init__(self, pipeFromC, pipeToC):
         self.pipeFromC = pipeFromC

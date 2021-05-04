@@ -25,7 +25,7 @@ def processImagesThread(q, oq, settings, camSpecs):
             if goSign != (queueId + 1):
                 print ( " Error frame mistmatch in camera queue. " , goSign, " != ", queueId + 1 )
             # Process the camera frame
-            camcoordinates, camtimestamp = cameraRecognition.takeCameraFrame(settings,camSpecs)
+            camcoordinates, camtimestamp = cameraRecognition.takeCameraFrame()
             # Put the results back in the queue for the main thread
             oq.put([camcoordinates, camtimestamp, goSign])
 

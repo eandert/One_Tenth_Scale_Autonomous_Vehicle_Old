@@ -4,6 +4,9 @@ from adafruit_motor import servo
 from adafruit_pca9685 import PCA9685
 import math
 
+
+''' This class communicates with the PCA9685 servo controller board in order to control the 
+steering servo and main motor PWM triggered motor driver.'''
 class Motors:
     def __init__(self):
         self.steering_angle_max = 30.0

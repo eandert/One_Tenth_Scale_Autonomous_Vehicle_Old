@@ -5,6 +5,7 @@ from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 
 
+''' Helper function to calculate the difference between 2 angles in radians'''
 def angleDifference( angle1, angle2 ):
     diff = ( angle2 - angle1 + math.pi ) % (2*math.pi) - math.pi;
     if diff < -math.pi:
@@ -12,6 +13,14 @@ def angleDifference( angle1, angle2 ):
     else:
         return diff
 
+
+''' This class contains the parameters of a RC car platform like wheelbase, etc. as
+well as a rudimentary physics estimation based on the ackerman steering model. We can feed the class
+a route which consists of a series of x,y coordinates and group speed target integers. The planner
+class can then be classed with the current position from the localizer and it will use
+pure pursuit to select a target point and decide a PPM value for the steering servo. There is also
+a built in PID controller that will select the PID control for the motor based on the target velocity
+of the target point velocity group. This velocity group accounts for traffic lights. '''
 class Planner:
     def __init__(self):
         # Static Vehicle Params
