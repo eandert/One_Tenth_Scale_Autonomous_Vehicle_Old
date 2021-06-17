@@ -3,6 +3,7 @@ import numpy as np
 from simple_pid import PID
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
+from shapely.geometry.linestring import LineString
 
 
 ''' Helper function to calculate the difference between 2 angles in radians'''
@@ -240,6 +241,90 @@ class Planner:
             if (y > y1) and (y < y2):
                 return True
         return False
+
+    def fake_lidar(self, positions, objects, lidar_range, lidar_error, myIndex):
+
+        print("FAKING LIDAR")
+        lidar_point_cloud = []
+
+        # Get the points the Slamware M1M1 should generate
+        lidar_freq = 7000 / 8
+        angle_change = (2 * math.pi) / lidar_freq
+
+        # Create all the vehicle polygons and combine them into one big list
+        polygons = []
+        for idx, vehicle in enumerate(positions):
+            if myIndex != idx:
+                # Create a bounding box for vehicle vehicle that is length + 2*buffer long and width + 2*buffer wide
+                x1 = vehicle[0] + (
+                            (self.wheelbaseWidth / 2 + vehicle[4]) * math.cos(vehicle[2] + math.radians(90)) + (
+                                (self.wheelbaseLengthFromRear + vehicle[4]) * math.cos(
+                            vehicle[2] - math.radians(180))))
+                y1 = vehicle[1] + (
+                            (self.wheelbaseWidth / 2 + vehicle[4]) * math.sin(vehicle[2] + math.radians(90)) + (
+                                (self.wheelbaseLengthFromRear + vehicle[4]) * math.sin(
+                            vehicle[2] - math.radians(180))))
+                x2 = vehicle[0] + (
+                            (self.wheelbaseWidth / 2 + vehicle[4]) * math.cos(vehicle[2] - math.radians(90)) + (
+                                (self.wheelbaseLengthFromRear + vehicle[4]) * math.cos(
+                            vehicle[2] - math.radians(180))))
+                y2 = vehicle[1] + (
+                            (self.wheelbaseWidth / 2 + vehicle[4]) * math.sin(vehicle[2] - math.radians(90)) + (
+                                (self.wheelbaseLengthFromRear + vehicle[4]) * math.sin(
+                            vehicle[2] - math.radians(180))))
+                x3 = vehicle[0] + (
+                            (self.wheelbaseWidth / 2 + vehicle[4]) * math.cos(vehicle[2] - math.radians(90)) + (
+                                (self.wheelbaseLength - self.wheelbaseLengthFromRear + vehicle[4]) * math.cos(
+                            vehicle[2])))
+                y3 = vehicle[1] + (
+                            (self.wheelbaseWidth / 2 + vehicle[4]) * math.sin(vehicle[2] - math.radians(90)) + (
+                                (self.wheelbaseLength - self.wheelbaseLengthFromRear + vehicle[4]) * math.sin(
+                            vehicle[2])))
+                x4 = vehicle[0] + (
+                            (self.wheelbaseWidth / 2 + vehicle[4]) * math.cos(vehicle[2] + math.radians(90)) + (
+                                (self.wheelbaseLength - self.wheelbaseLengthFromRear + vehicle[4]) * math.cos(
+                            vehicle[2])))
+                y4 = vehicle[1] + (
+                            (self.wheelbaseWidth / 2 + vehicle[4]) * math.sin(vehicle[2] + math.radians(90)) + (
+                                (self.wheelbaseLength - self.wheelbaseLengthFromRear + vehicle[4]) * math.sin(
+                            vehicle[2])))
+                polygon = Polygon([(x1, y1), (x2, y2), (x3, y3), (x4, y4)])
+                polygons.append(polygon)
+
+        # Generate fake lidar data from the points
+        for angle_idx in range(int(lidar_freq)):
+            intersections = []
+            intersect_dist = 9999999999
+            final_point = None
+
+            # Go through all the polygons that the line intersects with and add them
+            for poly in polygons:
+                line = [(self.localizationPositionX, self.localizationPositionY), (
+                self.localizationPositionX + (lidar_range * math.cos(angle_idx * angle_change)),
+                self.localizationPositionY + (lidar_range * math.sin(angle_idx * angle_change)))]
+                shapely_line = LineString(line)
+                intersections += list(poly.intersection(shapely_line).coords)
+
+            # Don't forget the other objects as well (already should be a list of polygons)
+            for poly in objects:
+                line = [(self.localizationPositionX, self.localizationPositionY), (
+                self.localizationPositionX + (lidar_range * math.cos(angle_idx * angle_change)),
+                self.localizationPositionY + (lidar_range * math.sin(angle_idx * angle_change)))]
+                shapely_line = LineString(line)
+                intersections += list(poly.intersection(shapely_line).coords)
+
+            # Get the closest intersection with a polygon as that will be where our lidar beam stops
+            for point in intersections:
+                dist = math.hypot(point[0] - self.localizationPositionX, point[1] - self.localizationPositionY)
+                if dist < intersect_dist:
+                    final_point = point
+
+            # Make sure this worked and is not None
+            if final_point != None:
+                lidar_point_cloud.append(final_point)
+
+        # print ( lidar_point_cloud )
+        return lidar_point_cloud
 
     def check_positions_of_other_vehicles_adjust_velocity(self, positions, myIndex):
         self.followDistance = 99

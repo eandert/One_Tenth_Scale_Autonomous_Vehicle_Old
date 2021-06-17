@@ -292,7 +292,12 @@ class LIDAR:
         if len(output) < 1:
             return [[],timestamp]
 
+        #print ( "got", output )
+
         array = np.array(output)
+
+        #print ( "conv", array )
+
         db = DBSCAN(eps=0.1, min_samples=3).fit(array)
         y_pred = db.fit_predict(array)
         
@@ -333,7 +338,7 @@ class LIDAR:
         smallX = []
         smallY = []
         for clusterRange, x, y in zip(clusterMaxRange, centerPointsX, centerPointsY):
-            if clusterRange > .1:
+            if clusterRange > 1.0:
                 bigX.append(x)
                 bigY.append(y)
             else:
